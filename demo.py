@@ -9,13 +9,23 @@ import cv2
 import numpy as np
 
 classes_name =  ["aeroplane", "bicycle", "bird", "boat", "bottle", "bus", "car", "cat", "chair", "cow", "diningtable", "dog", "horse", "motorbike", "person", "pottedplant", "sheep", "sofa", "train","tvmonitor"]
-
+def iou(box1, box2):
+    tb = min(box1[0] + 0.5 * box1[2], box2[0] + 0.5 * box2[2]) - max(box1[0] - 0.5 * box1[2], box2[0] - 0.5 * box2[2])
+    lr = min(box1[1] + 0.5 * box1[3], box2[1] + 0.5 * box2[3]) - max(box1[1] - 0.5 * box1[3], box2[1] - 0.5 * box2[3])
+    if tb < 0 or lr < 0:
+        intersection = 0
+    else:
+        intersection = tb * lr
+    a = box1[2] * box1[3]
+    b = box2[2] * box2[3]
+    resut = float(intersection) / float(a+b-intersection)
+    return resut
 
 def process_predicts(predicts):
     p_classes = predicts[0, :, :, 0:20]
     C = predicts[0, :, :, 20:22]
     coordinate = predicts[0, :, :, 22:]
-    threshold = 0.02
+    threshold = 0.2
 
     p_classes = np.reshape(p_classes, (7, 7, 1, 20))
     C = np.reshape(C, (7, 7, 2, 1))
@@ -56,9 +66,16 @@ def process_predicts(predicts):
     ymax = ymin + h
 
     result = []
+    for i in range(len(class_num)):
+        for j in range(i+1, len(class_num)):
+            if iou([xmin[i], ymin[i], xmax[i], ymax[i]],[xmin[j], ymin[j], xmax[j], ymax[j]]) > 0.5 and\
+                    (class_num[i] == class_num[j]) and class_num[i] != -1:
+                xmin[i],ymin[i],xmax[i],ymax[i] = min(xmin[i], xmin[j]),min(ymin[i],ymin[j]),max(xmax[i], xmax[j]), max(ymax[i], ymax[j])
+                class_num[j]=-1
 
     for i in range(len(class_num)):
-        result.append([xmin[i], ymin[i], xmax[i], ymax[i], classes_name[class_num[i]]])
+        if class_num[i] != -1:
+            result.append([xmin[i], ymin[i], xmax[i], ymax[i], classes_name[class_num[i]]])
 
 
     return result
@@ -67,7 +84,7 @@ def draw_results(resized_img, result):
 
     for i in range(len(result)):
         cv2.rectangle(resized_img, (int(result[i][0]), int(result[i][1])), (int(result[i][2]), int(result[i][3])), (0, 0, 255), thickness=2)
-        cv2.putText(resized_img, result[i][4], (int(result[i][0]), int(result[i][1])), 2, 1.5, (0, 0, 255))
+        cv2.putText(resized_img, result[i][4], (int(result[i][0]), int(result[i][1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
     cv2.imshow("predict", resized_img)
 
 common_params = {'image_size': 448, 'num_classes': 20,
