@@ -81,7 +81,7 @@ predicts = net.inference(image)
 
 sess = tf.Session()
 
-np_img = cv2.imread('004545.jpg')
+np_img = cv2.imread('test.jpg')
 resized_img = cv2.resize(np_img, (448, 448))
 np_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
 
@@ -98,7 +98,7 @@ saver = tf.train.Saver()
 ckpt = tf.train.get_checkpoint_state(os.path.dirname("models/train/checkpoint"))
 if ckpt and ckpt.model_checkpoint_path:
     saver.restore(sess, ckpt.model_checkpoint_path)
-    print "Restore Finished!!"
+    print("Restore Finished!!")
 
 np_predict = sess.run(predicts, feed_dict={image: np_img})
 
