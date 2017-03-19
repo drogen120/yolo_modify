@@ -9,8 +9,11 @@ import sys
 import time
 import os
 from datetime import datetime
+from tensorflow.python import debug as tf_debug
 
 from yolo.solver.solver import Solver
+
+hooks = [tf_debug.LocalCLIDebugHook()]
 
 class YoloSolver(Solver):
   """Yolo Solver
@@ -71,6 +74,7 @@ class YoloSolver(Solver):
     self.predicts = self.net.inference(self.images)
     self.total_loss, self.nilboy = self.net.loss(self.predicts, self.labels, self.objects_num)
 
+
     tf.summary.scalar('loss', self.total_loss)
     self.train_op = self._train()
 
@@ -85,21 +89,23 @@ class YoloSolver(Solver):
     # config = tf.ConfigProto()
     # config.gpu_options.allocator_type = 'BFC'
     sess = tf.Session()
-
+    sess.run(init)
+    #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
+    #sess.add_tensor_filter("has_inf_or_nan", tf_debug.has_inf_or_nan)
 
     #saver1.restore(sess, self.pretrain_path)
     ckpt = tf.train.get_checkpoint_state(os.path.dirname("models/train/checkpoint"))
     if ckpt and ckpt.model_checkpoint_path:
        saver2.restore(sess, ckpt.model_checkpoint_path)
-       print "Restore Finished!!"
+       print ("Restore Finished!!")
     else:
        sess.run(init)
 
-    #sess.run(init)
+
     summary_writer = tf.summary.FileWriter(self.train_dir, sess.graph)
     start_step = self.global_step.eval(sess)
-    print "start_step"
-    print start_step
+    print ("start_step")
+    print (start_step)
 
     for step in range(start_step, self.max_iterators):
       start_time = time.time()

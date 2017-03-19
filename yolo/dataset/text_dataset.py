@@ -82,6 +82,7 @@ class TextDataSet(DataSet):
       object_num:  total object number  int
     """
     image = cv2.imread(record[0])
+
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     h = image.shape[0]
     w = image.shape[1]
@@ -112,6 +113,11 @@ class TextDataSet(DataSet):
       i += 5
       if object_num >= self.max_objects:
         break
+
+    # for item in labels:
+    #   cv2.rectangle(image, (int(item[0] - item[2]/2.0), int(item[1] - item[3]/2.0)), (int(item[0] + item[2]/2.0), int(item[1] + item[3]/2.0)), [0, 0, 255], thickness=1)
+    #   cv2.putText(image, str(item[4]), (int(item[0]),int(item[1])), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255))
+    # cv2.imwrite('./'+record[0].split('/')[-1],image)
     return [image, labels, object_num]
 
   def record_customer(self):
