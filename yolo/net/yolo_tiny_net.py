@@ -70,18 +70,18 @@ class YoloTinyNet(Net):
     temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 256, 512], stride=1)
     conv_num += 1
 
-    temp_conv = self.max_pool(temp_conv, [2, 2], 2)
+    #temp_conv = self.max_pool(temp_conv, [2, 2], 2)
 
     temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 512, 1024], stride=1)
     conv_num += 1     
 
-    temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
-    conv_num += 1
+    # temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
+    # conv_num += 1
 
     # temp_conv = self.conv2d('conv' + str(conv_num), temp_conv, [3, 3, 1024, 1024], stride=1)
     # conv_num += 1
 
-    predicts = self.conv2d('output', temp_conv, [3, 3, 1024, 61])
+    predicts = self.conv2d('output', temp_conv, [3, 3, 1024, 801])
 
     #temp_conv = tf.transpose(temp_conv, (0, 3, 1, 2))
 
@@ -186,22 +186,10 @@ class YoloTinyNet(Net):
     objects = response
 
     #calculate iou_predict_truth [CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
-    predict_boxes = predict[:, :, self.num_classes + self.boxes_per_cell:]
+    #predict_boxes = predict[:, :, self.num_classes + self.boxes_per_cell:]
     
 
-    predict_boxes = tf.reshape(predict_boxes, [self.cell_size, self.cell_size, self.boxes_per_cell, 4*10])
-
-    # predict_boxes = predict_boxes * [self.image_size / self.cell_size, self.image_size / self.cell_size, self.image_size, self.image_size]
-    #
-    # base_boxes = np.zeros([self.cell_size, self.cell_size, 4])
-    #
-    # for y in range(self.cell_size):
-    #   for x in range(self.cell_size):
-    #     #nilboy
-    #     base_boxes[y, x, :] = [self.image_size / self.cell_size * x, self.image_size / self.cell_size * y, 0, 0]
-    # base_boxes = np.tile(np.resize(base_boxes, [self.cell_size, self.cell_size, 1, 4]), [1, 1, self.boxes_per_cell, 1])
-    #
-    # predict_boxes = base_boxes + predict_boxes
+    #predict_boxes = tf.reshape(predict_boxes, [self.cell_size, self.cell_size, self.boxes_per_cell, 4*10])
 
     #iou_predict_truth = self.iou(predict_boxes, label[0:4])
     #calculate C [cell_size, cell_size, boxes_per_cell]
@@ -212,39 +200,23 @@ class YoloTinyNet(Net):
     #calculate I tensor [CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
     I = change * tf.reshape(response, (self.cell_size, self.cell_size, 1))
     
-    max_I = tf.reduce_max(I, 2, keep_dims=True)
-
-    I = tf.cast((I >= max_I), tf.float32) * tf.reshape(response, (self.cell_size, self.cell_size, 1))
+    # max_I = tf.reduce_max(I, 2, keep_dims=True)
+    #
+    # I = tf.cast((I >= max_I), tf.float32) * tf.reshape(response, (self.cell_size, self.cell_size, 1))
 
     #calculate no_I tensor [CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
     no_I = tf.ones_like(I, dtype=tf.float32) - I 
 
 
-    p_C = predict[:, :, self.num_classes:self.num_classes + self.boxes_per_cell]
+    p_C = predict[:, :, -1:]
 
-    #calculate truth x,y,sqrt_w,sqrt_h 0-D
-    # x = label[0]
-    # y = label[1]
-    #
-    # sqrt_w = tf.sqrt(tf.abs(label[2]))
-    # sqrt_h = tf.sqrt(tf.abs(label[3]))
-    #sqrt_w = tf.abs(label[2])
-    #sqrt_h = tf.abs(label[3])
-
-    #calculate predict p_x, p_y, p_sqrt_w, p_sqrt_h 3-D [CELL_SIZE, CELL_SIZE, BOXES_PER_CELL]
-    # p_x = predict_boxes[:, :, :, 0]
-    # p_y = predict_boxes[:, :, :, 1]
-    #
-    # p_sqrt_w = tf.sqrt(tf.minimum(self.image_size * 1.0, tf.maximum(0.0, predict_boxes[:, :, :, 2])))
-    # p_sqrt_h = tf.sqrt(tf.minimum(self.image_size * 1.0, tf.maximum(0.0, predict_boxes[:, :, :, 3])))
-    #calculate truth p 1-D tensor [NUM_CLASSES]
     P = tf.one_hot(tf.cast(label[4], tf.int32), self.num_classes, dtype=tf.float32)
 
     #calculate predict p_P 3-D tensor [CELL_SIZE, CELL_SIZE, NUM_CLASSES]
-    p_P = predict[:, :, 0:self.num_classes]
+    p_P = predict[:, :, 0:-1]
 
     #class_loss
-    class_loss = tf.nn.l2_loss(tf.reshape(objects, (self.cell_size, self.cell_size, 1)) * (p_P - P)) * self.class_scale
+    #class_loss = tf.nn.l2_loss(tf.reshape(objects, (self.cell_size, self.cell_size, 1)) * (p_P - P)) * self.class_scale
     #class_loss = tf.nn.l2_loss(tf.reshape(response, (self.cell_size, self.cell_size, 1)) * (p_P - P)) * self.class_scale
 
     #object_loss
@@ -256,19 +228,19 @@ class YoloTinyNet(Net):
     noobject_loss = tf.nn.l2_loss(no_I * (p_C)) * self.noobject_scale
 
     #new_coord_loss
-    coord_P = predict[:,:,self.num_classes+self.boxes_per_cell:]
+    #coord_P = predict[:,:,self.num_classes+self.boxes_per_cell:]
 
     #change = tf.ones([self.cell_size, self.cell_size, 4])
     #predict_xywh = change * tf.reshape(objects, [self.cell_size, self.cell_size, 1])
 
-    object_box = self.get_pridict_box(coord_P)
+    #object_box = self.get_pridict_box(coord_P)
 
-    predict_xywh = object_box * tf.reshape(objects, [self.cell_size, self.cell_size, 1])
-    predict_xywh = tf.reshape(predict_xywh, [self.cell_size, self.cell_size, 1, 4],name="predict_xywh")
-    tf.Print(predict_xywh, [predict_xywh])
-
-    iou = self.iou(predict_xywh, label[0:4])
-    iou = tf.reduce_sum(iou)
+    # predict_xywh = object_box * tf.reshape(objects, [self.cell_size, self.cell_size, 1])
+    # predict_xywh = tf.reshape(predict_xywh, [self.cell_size, self.cell_size, 1, 4],name="predict_xywh")
+    # tf.Print(predict_xywh, [predict_xywh])
+    #
+    # iou = self.iou(predict_xywh, label[0:4])
+    # iou = tf.reduce_sum(iou)
 
     thresh_vector = tf.lin_space(0.0, 0.9, 10)
 
@@ -290,7 +262,14 @@ class YoloTinyNet(Net):
 
     coord_gt = tf.concat([coord_x_gt, coord_y_gt, coord_w_gt, coord_h_gt], 0)
 
-    coord_loss = tf.nn.l2_loss(tf.reshape(objects, (self.cell_size, self.cell_size, 1)) * (coord_P - coord_gt))
+    class_coord_gt = tf.multiply(coord_gt, tf.slice(P,[0],[1]))
+    for k in range(1,20):
+        temp = tf.multiply(coord_gt, tf.slice(P,[k],[1]))
+        class_coord_gt = tf.concat([class_coord_gt, temp], 0)
+
+    class_coord_loss = tf.nn.l2_loss(tf.reshape(objects, (self.cell_size, self.cell_size, 1)) * (p_P - class_coord_gt))
+
+    #coord_loss = tf.nn.l2_loss(tf.reshape(objects, (self.cell_size, self.cell_size, 1)) * (coord_P - coord_gt))
 
 
     #coord_loss
@@ -301,7 +280,7 @@ class YoloTinyNet(Net):
 
     nilboy = I
 
-    return num + 1, object_num, [loss[0] + class_loss, loss[1] + object_loss, loss[2] + noobject_loss, loss[3] + coord_loss], predict, labels, avg_iou+iou, nilboy
+    return num + 1, object_num, [loss[0] + class_coord_loss, loss[1] + object_loss, loss[2] + noobject_loss], predict, labels, avg_iou, nilboy
 
 
 
@@ -318,29 +297,29 @@ class YoloTinyNet(Net):
     object_loss = tf.constant(0, tf.float32)
     noobject_loss = tf.constant(0, tf.float32)
     coord_loss = tf.constant(0, tf.float32)
-    loss = [0, 0, 0, 0]
+    loss = [0, 0, 0]
     temp_iou = tf.constant(0, tf.float32)
     ave_iou = 0
     for i in range(self.batch_size):
       predict = predicts[i, :, :, :]
       label = labels[i, :, :]
       object_num = objects_num[i]
-      nilboy = tf.ones([7,7,1])
-      tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num, [class_loss, object_loss, noobject_loss, coord_loss], predict, label, temp_iou, nilboy])
-      for j in range(4):
+      nilboy = tf.ones([14,14,1])
+      tuple_results = tf.while_loop(self.cond1, self.body1, [tf.constant(0), object_num, [class_loss, object_loss, noobject_loss], predict, label, temp_iou, nilboy])
+      for j in range(3):
         loss[j] = loss[j] + tuple_results[2][j]
 
       ave_iou = ave_iou + tuple_results[5]
       nilboy = tuple_results[6]
 
-    tf.add_to_collection('losses', (loss[0] + loss[1] + loss[2] + loss[3])/self.batch_size)
-    print (ave_iou)
-    tf.summary.scalar('class_loss', loss[0]/self.batch_size)
+    tf.add_to_collection('losses', (loss[0] + loss[1] + loss[2])/self.batch_size)
+    #print (ave_iou)
+    tf.summary.scalar('class_coord_loss', loss[0]/self.batch_size)
     tf.summary.scalar('object_loss', loss[1]/self.batch_size)
     tf.summary.scalar('noobject_loss', loss[2]/self.batch_size)
-    tf.summary.scalar('coord_loss', loss[3]/self.batch_size)
-    tf.summary.scalar('avg_iou', ave_iou)
-    tf.summary.scalar('weight_loss', tf.add_n(tf.get_collection('losses')) - (loss[0] + loss[1] + loss[2] + loss[3])/self.batch_size )
+    #tf.summary.scalar('coord_loss', loss[3]/self.batch_size)
+    #tf.summary.scalar('avg_iou', ave_iou)
+    tf.summary.scalar('weight_loss', tf.add_n(tf.get_collection('losses')) - (loss[0] + loss[1] + loss[2])/self.batch_size )
 
     return tf.add_n(tf.get_collection('losses'), name='total_loss'), nilboy
 

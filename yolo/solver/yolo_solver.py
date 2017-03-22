@@ -50,14 +50,15 @@ class YoloSolver(Solver):
     learning_rate = self.learning_rate
     # starter_learning_rate = self.learning_rate
     # end_learning_rate = self.learning_rate / 1000.0
-    # decay_steps = 10000
-    # learning_rate = tf.train.polynomial_decay(starter_learning_rate, self.global_step,
-    #                                           decay_steps, end_learning_rate,
-    #                                           power=0.5)
+    # decay_steps = 30000
+    # learning_rate = tf.train.polynomial_decay(learning_rate, self.global_step, decay_steps
+    #                                            , 0.000001, power=0.5)
 
-    tf.summary.scalar('learning rate', learning_rate)
+    #tf.summary.scalar('learning rate', learning_rate)
     #opt = tf.train.MomentumOptimizer(learning_rate, self.moment)
     opt = tf.train.AdamOptimizer(learning_rate)
+    #opt = tf.train.AdadeltaOptimizer()
+    #opt = tf.train.GradientDescentOptimizer(learning_rate)
     grads = opt.compute_gradients(self.total_loss)
 
     apply_gradient_op = opt.apply_gradients(grads, global_step=self.global_step)
